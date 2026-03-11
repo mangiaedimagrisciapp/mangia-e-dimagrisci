@@ -91,13 +91,16 @@ Rimanenti: <b id="restanti">0</b>
 <button onclick="aggiungiPeso()">Aggiungi peso</button>
 
 <script>
-let database = {}; // inizialmente vuoto
+// Inizializza database vuoto
+let database = {};
 
-// Carica il JSON con tutti i cibi
+// Carica i cibi dal file JSON
 fetch('alimenti.json')
   .then(res => res.json())
   .then(data => {
     database = data;
+
+    // Popola automaticamente il select dei gusti
     let select = document.getElementById('gusti');
     for(let cibo in database){
       let option = document.createElement('option');
