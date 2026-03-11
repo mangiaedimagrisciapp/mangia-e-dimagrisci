@@ -81,15 +81,7 @@ Rimanenti: <b id="restanti">0</b>
 <div id="calorieRis" style="margin-top:20px;font-size:18px;"></div>
 
 <h3>Scegli i tuoi cibi preferiti</h3>
-<select id="gusti" multiple>
-  <option value="uova">Uova</option>
-  <option value="pasta">Pasta</option>
-  <option value="pollo">Pollo</option>
-  <option value="tonno">Tonno</option>
-  <option value="yogurt">Yogurt</option>
-  <option value="zucchine">Zucchine</option>
-  <option value="noci">Noci</option>
-</select>
+<select id="gusti" multiple></select>
 <button onclick="suggerisciPasto()">Genera pasto consigliato</button>
 <div id="suggerimenti" style="margin-top:20px;font-size:16px;"></div>
 
@@ -99,15 +91,21 @@ Rimanenti: <b id="restanti">0</b>
 <button onclick="aggiungiPeso()">Aggiungi peso</button>
 
 <script>
-let database = {
-  "uova": {kcal:70, unita:"1 uovo"},
-  "pasta": {kcal:350, unita:"100g"},
-  "yogurt": {kcal:120, unita:"150g"},
-  "pollo": {kcal:165, unita:"100g"},
-  "tonno": {kcal:200, unita:"100g"},
-  "zucchine": {kcal:20, unita:"100g"},
-  "noci": {kcal:50, unita:"10g"}
-};
+let database = {}; // inizialmente vuoto
+
+// Carica il JSON con tutti i cibi
+fetch('alimenti.json')
+  .then(res => res.json())
+  .then(data => {
+    database = data;
+    let select = document.getElementById('gusti');
+    for(let cibo in database){
+      let option = document.createElement('option');
+      option.value = cibo;
+      option.text = cibo.charAt(0).toUpperCase() + cibo.slice(1);
+      select.appendChild(option);
+    }
+  });
 
 let calorieTotali = 0;
 let calorieConsumate = 0;
@@ -140,12 +138,12 @@ function calcolaCalorie(){
   testo.forEach(item => {
     for(let cibo in database){
       if(item.includes(cibo)){
-        // cerca i grammi se ci sono
         let num = item.match(/\d+/);
         let qty = num ? parseFloat(num[0]) : 1;
-        if(cibo === "uova") qty = num ? parseInt(num[0]) : 1;
-        if(cibo === "noci") qty = num ? parseFloat(num[0])/10 : 1; // perché unità 10g
-        if(cibo === "pasta") qty = num ? parseFloat(num[0])/100 : 1; // perché unità 100g
+        // Gestione unità speciali
+        if(database[cibo].unita.includes("uovo")) qty = num ? parseInt(num[0]) : 1;
+        if(database[cibo].unita.includes("10g")) qty = num ? parseFloat(num[0])/10 : 1;
+        if(database[cibo].unita.includes("100g")) qty = num ? parseFloat(num[0])/100 : 1;
         totale += database[cibo].kcal * qty;
       }
     }
