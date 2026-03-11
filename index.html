@@ -122,17 +122,19 @@ function calcolaCalorie(){
 
 function suggerisciPasto(){
   let gusti = Array.from(document.getElementById("gusti").selectedOptions).map(o=>o.value);
-  let rimanenti = calorieTotali - calorieConsumate;
   let consigli = [];
+
+  // Mostra sempre i gusti selezionati, indipendentemente dalle calorie rimanenti
   gusti.forEach(cibo => {
-    if(database[cibo] && database[cibo] <= rimanenti){
+    if(database[cibo]){
       consigli.push(`${cibo} → ${database[cibo]} kcal`);
-      rimanenti -= database[cibo];
     }
   });
+
   if(consigli.length === 0){
-    consigli.push("Riduci le porzioni, calorie rimaste poche!");
+    consigli.push("Riduci le porzioni, oppure seleziona i gusti per ricevere consigli!");
   }
+
   document.getElementById("suggerimenti").innerHTML = consigli.join("<br>");
 }
 
