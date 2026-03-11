@@ -33,42 +33,54 @@ button:hover{
   background:#45a049;
 }
 
-textarea{
+input, select, textarea{
   width:100%;
   border-radius:8px;
   padding:10px;
   font-size:16px;
+  margin-bottom:10px;
 }
 </style>
 </head>
-
 <body>
 
 <h2>🍏 Mangia e Dimagrisci</h2>
 
 <div class="card">
-Calorie Totali: <b id="totali">1300</b><br>
-Consumate: <b id="consumate">820</b><br>
-Rimanenti: <b id="restanti">480</b>
+<h3>Inserisci i tuoi dati</h3>
+Peso (kg): <input type="number" id="pesoUtente" value="60"><br>
+Altezza (cm): <input type="number" id="altezza" value="165"><br>
+Età: <input type="number" id="eta" value="30"><br>
+Sesso: 
+<select id="sesso">
+  <option value="maschio">Maschio</option>
+  <option value="femmina">Femmina</option>
+</select><br>
+Attività: 
+<select id="attivita">
+  <option value="1.2">Sedentario</option>
+  <option value="1.375">Leggermente attivo</option>
+  <option value="1.55">Moderatamente attivo</option>
+  <option value="1.725">Molto attivo</option>
+</select><br>
+<button onclick="calcolaCalorieGiornaliere()">Calcola calorie giornaliere</button>
 </div>
 
 <div class="card">
-Proteine: <span style="color:green" id="prot">70g</span><br>
-Carboidrati: <span style="color:orange" id="carb">120g</span><br>
-Grassi: <span style="color:red" id="grassi">35g</span>
+Calorie giornaliere consigliate: <b id="totali">0</b><br>
+Consumate: <b id="consumate">0</b><br>
+Rimanenti: <b id="restanti">0</b>
 </div>
 
 <h3>Inserisci i pasti</h3>
 <textarea id="pasti" rows="5" placeholder="esempio:
 2 uova
 100g pasta
-yogurt"></textarea>
-<br><br>
+50g noci"></textarea>
 <button onclick="calcolaCalorie()">Calcola calorie</button>
-
 <div id="calorieRis" style="margin-top:20px;font-size:18px;"></div>
 
-<h3>Suggerimenti pasto</h3>
+<h3>Scegli i tuoi cibi preferiti</h3>
 <select id="gusti" multiple>
   <option value="uova">Uova</option>
   <option value="pasta">Pasta</option>
@@ -78,30 +90,49 @@ yogurt"></textarea>
   <option value="zucchine">Zucchine</option>
   <option value="noci">Noci</option>
 </select>
-<br><br>
 <button onclick="suggerisciPasto()">Genera pasto consigliato</button>
-
 <div id="suggerimenti" style="margin-top:20px;font-size:16px;"></div>
 
 <h3>Andamento peso</h3>
 <canvas id="graficoPeso" width="400" height="200"></canvas>
-<br>
 <input type="number" id="peso" placeholder="Inserisci peso odierno (kg)">
 <button onclick="aggiungiPeso()">Aggiungi peso</button>
 
 <script>
 let database = {
-  "uova":70,
-  "pasta":350,
-  "yogurt":120,
-  "pollo":165,
-  "tonno":200,
-  "zucchine":20,
-  "noci":50
+  "uova": {kcal:70, unita:"1 uovo"},
+  "pasta": {kcal:350, unita:"100g"},
+  "yogurt": {kcal:120, unita:"150g"},
+  "pollo": {kcal:165, unita:"100g"},
+  "tonno": {kcal:200, unita:"100g"},
+  "zucchine": {kcal:20, unita:"100g"},
+  "noci": {kcal:50, unita:"10g"}
 };
 
-let calorieTotali = 1300;
-let calorieConsumate = 820;
+let calorieTotali = 0;
+let calorieConsumate = 0;
+
+function calcolaCalorieGiornaliere(){
+  let peso = parseFloat(document.getElementById("pesoUtente").value);
+  let altezza = parseFloat(document.getElementById("altezza").value);
+  let eta = parseFloat(document.getElementById("eta").value);
+  let sesso = document.getElementById("sesso").value;
+  let attivita = parseFloat(document.getElementById("attivita").value);
+
+  let BMR;
+  if(sesso === "maschio"){
+    BMR = 10*peso + 6.25*altezza - 5*eta + 5;
+  }else{
+    BMR = 10*peso + 6.25*altezza - 5*eta -161;
+  }
+  calorieTotali = Math.round(BMR * attivita);
+  calorieConsumate = 0;
+  document.getElementById("totali").innerText = calorieTotali;
+  document.getElementById("consumate").innerText = calorieConsumate;
+  document.getElementById("restanti").innerText = calorieTotali - calorieConsumate;
+  document.getElementById("calorieRis").innerHTML = "";
+  document.getElementById("suggerimenti").innerHTML = "";
+}
 
 function calcolaCalorie(){
   let testo = document.getElementById("pasti").value.toLowerCase().split("\n");
@@ -109,32 +140,36 @@ function calcolaCalorie(){
   testo.forEach(item => {
     for(let cibo in database){
       if(item.includes(cibo)){
-        totale += database[cibo];
+        // cerca i grammi se ci sono
+        let num = item.match(/\d+/);
+        let qty = num ? parseFloat(num[0]) : 1;
+        if(cibo === "uova") qty = num ? parseInt(num[0]) : 1;
+        if(cibo === "noci") qty = num ? parseFloat(num[0])/10 : 1; // perché unità 10g
+        if(cibo === "pasta") qty = num ? parseFloat(num[0])/100 : 1; // perché unità 100g
+        totale += database[cibo].kcal * qty;
       }
     }
   });
-  calorieConsumate += totale;
+  calorieConsumate += Math.round(totale);
   let rimanenti = calorieTotali - calorieConsumate;
-  document.getElementById("calorieRis").innerHTML = `🔥 Calorie aggiunte: ${totale} kcal<br>Rimanenti: ${rimanenti} kcal`;
+  document.getElementById("calorieRis").innerHTML = `🔥 Calorie aggiunte: ${Math.round(totale)} kcal<br>Rimanenti: ${rimanenti} kcal`;
   document.getElementById("consumate").innerText = calorieConsumate;
   document.getElementById("restanti").innerText = rimanenti;
 }
 
 function suggerisciPasto(){
   let gusti = Array.from(document.getElementById("gusti").selectedOptions).map(o=>o.value);
+  let rimanenti = calorieTotali - calorieConsumate;
   let consigli = [];
-
-  // Mostra sempre i gusti selezionati, indipendentemente dalle calorie rimanenti
   gusti.forEach(cibo => {
-    if(database[cibo]){
-      consigli.push(`${cibo} → ${database[cibo]} kcal`);
+    if(database[cibo] && database[cibo].kcal <= rimanenti){
+      consigli.push(`${cibo} → ${database[cibo].unita} (~${database[cibo].kcal} kcal)`);
+      rimanenti -= database[cibo].kcal;
     }
   });
-
   if(consigli.length === 0){
-    consigli.push("Riduci le porzioni, oppure seleziona i gusti per ricevere consigli!");
+    consigli.push("Riduci le porzioni o seleziona altri gusti per ricevere consigli!");
   }
-
   document.getElementById("suggerimenti").innerHTML = consigli.join("<br>");
 }
 
@@ -170,6 +205,5 @@ function aggiungiPeso(){
   }
 }
 </script>
-
 </body>
 </html>
