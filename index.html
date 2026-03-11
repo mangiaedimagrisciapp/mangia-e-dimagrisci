@@ -3,33 +3,41 @@
 <head>
 <title>Mangia e Dimagrisci</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body{
-font-family:Arial;
-padding:20px;
-background:#f5f5f5;
+  font-family:Arial;
+  padding:20px;
+  background:#f5f5f5;
 }
 
 .card{
-background:white;
-padding:20px;
-border-radius:10px;
-margin-bottom:20px;
-box-shadow:0 2px 5px rgba(0,0,0,0.1);
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  margin-bottom:20px;
+  box-shadow:0 2px 5px rgba(0,0,0,0.1);
 }
 
 button{
-padding:12px;
-font-size:16px;
-border:none;
-background:#4CAF50;
-color:white;
-border-radius:8px;
-cursor:pointer;
+  padding:12px;
+  font-size:16px;
+  border:none;
+  background:#4CAF50;
+  color:white;
+  border-radius:8px;
+  cursor:pointer;
 }
 
 button:hover{
-background:#45a049;
+  background:#45a049;
+}
+
+textarea{
+  width:100%;
+  border-radius:8px;
+  padding:10px;
+  font-size:16px;
 }
 </style>
 </head>
@@ -39,42 +47,126 @@ background:#45a049;
 <h2>🍏 Mangia e Dimagrisci</h2>
 
 <div class="card">
-Calorie Totali: <b>1300</b><br>
-Consumate: <b>820</b><br>
-Rimanenti: <b>480</b>
+Calorie Totali: <b id="totali">1300</b><br>
+Consumate: <b id="consumate">820</b><br>
+Rimanenti: <b id="restanti">480</b>
 </div>
 
 <div class="card">
-Proteine: <span style="color:green">70g</span><br>
-Carboidrati: <span style="color:orange">120g</span><br>
-Grassi: <span style="color:red">35g</span>
+Proteine: <span style="color:green" id="prot">70g</span><br>
+Carboidrati: <span style="color:orange" id="carb">120g</span><br>
+Grassi: <span style="color:red" id="grassi">35g</span>
 </div>
 
-<button onclick="consiglia()">Suggerisci cosa mangiare</button>
+<h3>Inserisci i pasti</h3>
+<textarea id="pasti" rows="5" placeholder="esempio:
+2 uova
+100g pasta
+yogurt"></textarea>
+<br><br>
+<button onclick="calcolaCalorie()">Calcola calorie</button>
 
-<div id="risultato" style="margin-top:20px;"></div>
+<div id="calorieRis" style="margin-top:20px;font-size:18px;"></div>
+
+<h3>Suggerimenti pasto</h3>
+<select id="gusti" multiple>
+  <option value="uova">Uova</option>
+  <option value="pasta">Pasta</option>
+  <option value="pollo">Pollo</option>
+  <option value="tonno">Tonno</option>
+  <option value="yogurt">Yogurt</option>
+  <option value="zucchine">Zucchine</option>
+  <option value="noci">Noci</option>
+</select>
+<br><br>
+<button onclick="suggerisciPasto()">Genera pasto consigliato</button>
+
+<div id="suggerimenti" style="margin-top:20px;font-size:16px;"></div>
+
+<h3>Andamento peso</h3>
+<canvas id="graficoPeso" width="400" height="200"></canvas>
+<br>
+<input type="number" id="peso" placeholder="Inserisci peso odierno (kg)">
+<button onclick="aggiungiPeso()">Aggiungi peso</button>
 
 <script>
+let database = {
+  "uova":70,
+  "pasta":350,
+  "yogurt":120,
+  "pollo":165,
+  "tonno":200,
+  "zucchine":20,
+  "noci":50
+};
 
-function consiglia(){
+let calorieTotali = 1300;
+let calorieConsumate = 820;
 
-let suggerimenti=[
-"🥚 2 uova + zucchine (220 kcal)",
-"🍗 pollo + verdure (300 kcal)",
-"🥣 yogurt + noci (210 kcal)",
-"🍝 pasta + tonno (350 kcal)"
-];
-
-let html="<h3>Suggerimenti</h3>";
-
-suggerimenti.forEach(c=>{
-html+=c+"<br>";
-});
-
-document.getElementById("risultato").innerHTML=html;
-
+function calcolaCalorie(){
+  let testo = document.getElementById("pasti").value.toLowerCase().split("\n");
+  let totale = 0;
+  testo.forEach(item => {
+    for(let cibo in database){
+      if(item.includes(cibo)){
+        totale += database[cibo];
+      }
+    }
+  });
+  calorieConsumate += totale;
+  let rimanenti = calorieTotali - calorieConsumate;
+  document.getElementById("calorieRis").innerHTML = `🔥 Calorie aggiunte: ${totale} kcal<br>Rimanenti: ${rimanenti} kcal`;
+  document.getElementById("consumate").innerText = calorieConsumate;
+  document.getElementById("restanti").innerText = rimanenti;
 }
 
+function suggerisciPasto(){
+  let gusti = Array.from(document.getElementById("gusti").selectedOptions).map(o=>o.value);
+  let rimanenti = calorieTotali - calorieConsumate;
+  let consigli = [];
+  gusti.forEach(cibo => {
+    if(database[cibo] && database[cibo] <= rimanenti){
+      consigli.push(`${cibo} → ${database[cibo]} kcal`);
+      rimanenti -= database[cibo];
+    }
+  });
+  if(consigli.length === 0){
+    consigli.push("Riduci le porzioni, calorie rimaste poche!");
+  }
+  document.getElementById("suggerimenti").innerHTML = consigli.join("<br>");
+}
+
+// Grafico peso
+let pesi = [];
+let giorni = [];
+const ctx = document.getElementById('graficoPeso').getContext('2d');
+const grafico = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: giorni,
+    datasets: [{
+      label: 'Peso (kg)',
+      data: pesi,
+      borderColor: 'green',
+      tension: 0.2,
+      fill:false
+    }]
+  },
+  options:{
+    scales:{y:{beginAtZero:false}}
+  }
+});
+
+function aggiungiPeso(){
+  let peso = parseFloat(document.getElementById("peso").value);
+  if(!isNaN(peso)){
+    pesi.push(peso);
+    let oggi = new Date().toLocaleDateString();
+    giorni.push(oggi);
+    grafico.update();
+    document.getElementById("peso").value = "";
+  }
+}
 </script>
 
 </body>
