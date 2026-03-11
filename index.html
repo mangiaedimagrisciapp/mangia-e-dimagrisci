@@ -82,7 +82,7 @@ Rimanenti: <b id="restanti">0</b>
 
 <h3>Scegli i tuoi cibi preferiti</h3>
 <select id="gusti" multiple></select>
-<button onclick="suggerisciPasto()">Genera pasto consigliato</button>
+<button onclick="suggerisciPastoSmart()">Genera pasto consigliato</button>
 <div id="suggerimenti" style="margin-top:20px;font-size:16px;"></div>
 
 <h3>Andamento peso</h3>
@@ -99,8 +99,7 @@ fetch('alimenti.json')
   .then(res => res.json())
   .then(data => {
     database = data;
-
-    // Popola automaticamente il select dei gusti
+    // Popola select dei gusti
     let select = document.getElementById('gusti');
     for(let cibo in database){
       let option = document.createElement('option');
@@ -113,12 +112,29 @@ fetch('alimenti.json')
 let calorieTotali = 0;
 let calorieConsumate = 0;
 
+// Carica dati utente dal localStorage se presenti
+window.addEventListener("load", () => {
+  let datiSalvati = localStorage.getItem("datiUtente");
+  if(datiSalvati){
+    datiSalvati = JSON.parse(datiSalvati);
+    document.getElementById("pesoUtente").value = datiSalvati.peso;
+    document.getElementById("altezza").value = datiSalvati.altezza;
+    document.getElementById("eta").value = datiSalvati.eta;
+    document.getElementById("sesso").value = datiSalvati.sesso;
+    document.getElementById("attivita").value = datiSalvati.attivita;
+    calcolaCalorieGiornaliere();
+  }
+});
+
 function calcolaCalorieGiornaliere(){
   let peso = parseFloat(document.getElementById("pesoUtente").value);
   let altezza = parseFloat(document.getElementById("altezza").value);
   let eta = parseFloat(document.getElementById("eta").value);
   let sesso = document.getElementById("sesso").value;
   let attivita = parseFloat(document.getElementById("attivita").value);
+
+  // Salva su localStorage
+  localStorage.setItem("datiUtente", JSON.stringify({peso, altezza, eta, sesso, attivita}));
 
   let BMR;
   if(sesso === "maschio"){
@@ -143,7 +159,6 @@ function calcolaCalorie(){
       if(item.includes(cibo)){
         let num = item.match(/\d+/);
         let qty = num ? parseFloat(num[0]) : 1;
-        // Gestione unità speciali
         if(database[cibo].unita.includes("uovo")) qty = num ? parseInt(num[0]) : 1;
         if(database[cibo].unita.includes("10g")) qty = num ? parseFloat(num[0])/10 : 1;
         if(database[cibo].unita.includes("100g")) qty = num ? parseFloat(num[0])/100 : 1;
@@ -158,19 +173,32 @@ function calcolaCalorie(){
   document.getElementById("restanti").innerText = rimanenti;
 }
 
-function suggerisciPasto(){
+// Funzione pasto consigliato "smart"
+function suggerisciPastoSmart(){
   let gusti = Array.from(document.getElementById("gusti").selectedOptions).map(o=>o.value);
   let rimanenti = calorieTotali - calorieConsumate;
   let consigli = [];
+  
+  // Ordina i gusti in ordine casuale per variare le combinazioni
+  gusti = gusti.sort(()=>Math.random()-0.5);
+
   gusti.forEach(cibo => {
-    if(database[cibo] && database[cibo].kcal <= rimanenti){
-      consigli.push(`${cibo} → ${database[cibo].unita} (~${database[cibo].kcal} kcal)`);
-      rimanenti -= database[cibo].kcal;
+    if(database[cibo]){
+      let kcalUnit = database[cibo].kcal;
+      let unita = database[cibo].unita;
+
+      while(kcalUnit <= rimanenti){
+        consigli.push(`${cibo} → ${unita} (~${kcalUnit} kcal)`);
+        rimanenti -= kcalUnit;
+        if(rimanenti <= 0) break;
+      }
     }
   });
+
   if(consigli.length === 0){
     consigli.push("Riduci le porzioni o seleziona altri gusti per ricevere consigli!");
   }
+
   document.getElementById("suggerimenti").innerHTML = consigli.join("<br>");
 }
 
